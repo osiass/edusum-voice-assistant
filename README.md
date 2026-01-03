@@ -32,11 +32,11 @@ Bu modul, sesi metne, metni bilgiye, bilgiyi tekrar insansi sese donusturen 4 as
 
 ```mermaid
 graph LR
-    A[Kullanici Sesi] -- STT (Whisper) --> B(Metin);
-    B -- Sorgu --> C[EduSum RAG];
-    C -- Baglam (Context) --> D[Gemini 2.5 Flash];
-    D -- Cevap Metni --> E[Coqui XTTS v2];
-    E -- Klonlanmis Ses --> F[Cikti Audio];
+    A["Kullanici Sesi"] -- "STT (Whisper)" --> B("Metin");
+    B -- "Sorgu" --> C["EduSum RAG"];
+    C -- "Baglam (Context)" --> D["Gemini 2.5 Flash"];
+    D -- "Cevap Metni" --> E["Coqui XTTS v2"];
+    E -- "Klonlanmis Ses" --> F["Cikti Audio"];
 ```
 
 ---
