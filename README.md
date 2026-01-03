@@ -1,57 +1,67 @@
-# EduSum Ses Asistana (Voice)
+# EduSum Ses Asistanı (The Voice)
 
-> **Gercek Zamanli Ses Kopyalama ve Egitim Soru-Cevap Asistani**
-> _Gemini 1.5 ve Coqui XTTS v2 guclendirilmis Baglam Duyarli Sesli Etkilesim hatti_
+> **Yeni Nesil Eğitim Odaklı Sesli Etkileşim Motoru**
+> _Gemini 2.5 Flash ve Coqui XTTS v2 ile Güçlendirilmiş Gerçek Zamanlı Pipeline_
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
-![Coqui TTS](https://img.shields.io/badge/Coqui-XTTS_v2-green)
-![Gemini](https://img.shields.io/badge/LLM-Gemini_1.5_Flash-purple)
+![Model](https://img.shields.io/badge/LLM-Gemini_2.5_Flash-purple)
+![TTS](https://img.shields.io/badge/TTS-Coqui_XTTS_v2-green)
+![Processing](https://img.shields.io/badge/Audio-Librosa-yellow)
 
-## Genel Bakis
+## 🏗️ Teknik Mimari ve Modeller
 
-**EduSum Voice**, EduSum ekosisteminin "agzi" ve "kulaklaridir". Ogrencileri dinler, sorularini (bozuk cumlelerle bile olsa) anlar, RAG kutuphanesine danisir ve **ogrencinin kendi sesiyle** (veya belirlenen bir ogretmen personasiyla) Gercek Zamanli Ses Kopyalama (Zero-Shot Voice Cloning) kullanarak cevap verir.
+Bu modül, sesi metne, metni bilgiye, bilgiyi tekrar insansı sese dönüştüren 4 aşamalı bir boru hattıdır (pipeline).
 
----
+### 1. Beyin: Google Gemini 2.5 Flash
+- **Model:** `gemini-2.5-flash` (En güncel, düşük gecikmeli sürüm).
+- **Rolü:** RAG kütüphanesinden gelen ham ders notlarını, bir "Lise Öğretmeni" edasıyla işler.
+- **Konfigürasyon:** `temperature=0.3` (Halüsinasyonu önlemek için düşük yaratıcılık), `max_tokens=500` (Kısa ve öz cevaplar).
 
-## Temel Ozellikler
+### 2. Ses Üretimi: Coqui XTTS v2
+- **Model:** `coqui/XTTS-v2`
+- **Özellik:** **Zero-Shot Voice Cloning** (Sıfır Atışlı Ses Kopyalama).
+- **Çalışma Prensibi:** Sisteme verilen sadece 3 saniyelik bir `wav` dosyasındaki (`speaker_reference`) tınıyı (timbre) ve tonu analiz eder. Üretilen cevabı o kişinin sesiyle okur.
 
-### 1. Zero-Shot Ses Kopyalama
-- **Coqui XTTS v2** temel modelini kullanir.
-- 3 saniyelik referans sesi (`kayit.wav`) analiz ederek konusmacinin sesini gercek zamanli olarak kopyalar.
-- Fine-tuning (ince ayar) gerektirmez.
-
-### 2. "Lise Asistani" Personasi (Gemini 1.5)
-- Lise Ders Asistani olarak davranmasi icin ozel olarak promptlanmis LLM.
-- **Kati Kurallar:** Asla halusinasyon gormez (uydurmaz). Sadece saglanan RAG parcalarini kullanir.
-- **Pedagojik Format:** "Nedir" sorularini tanimlarla, "Yorumlayiniz" sorularini benzetmelerle aciklar.
-
-### 3. Dusuk Gecikmeli Hat (Pipeline)
-- Optimize edilmis `VoiceQAOrchestrator` akisi yonetir: `STT (Sesi Yaziya Dokme) -> Erisim (Retrieval) -> Uretim (Generation) -> TTS (Yaziyi Sese Dokme)`.
-- Daha akici etkilesimler icin asenkron isleme.
+### 3. Ses İşleme: Librosa & SoundFile
+- **Kütüphaneler:** `librosa`, `soundfile`, `numpy`.
+- **Görev:** Gelen farklı formatlardaki (mp3, m4a, ogg) sesleri standart `22050Hz Mono WAV` formatına dönüştürür ve gürültüden arındırır.
 
 ---
 
-## Kullanim
+## 🚀 Akış Şeması (Workflow)
 
-### 1. API'yi Baslatin
+```mermaid
+graph LR
+    A[🎤 Kullanıcı Sesi] -- STT (Whisper) --> B(Metin);
+    B -- Sorgu --> C[📚 EduSum RAG];
+    C -- Bağlam (Context) --> D[🧠 Gemini 2.5 Flash];
+    D -- Cevap Metni --> E[🗣️ Coqui XTTS v2];
+    E -- Klonlanmış Ses --> F[🎧 Çıktı Audio];
+```
+
+---
+
+## ⚙️ Prompt Mühendisliği (System Prompt)
+Sistemin kullandığı LLM, "Doğruluk" ve "Pedagoji" odaklı katı kurallarla yönetilir:
+- **Asla Uydurma (No Hallucination):** Sadece RAG'dan gelen PDF parçalarını kullanır.
+- **Format Kontrolü:** "Nedir?" sorularına tanım cümlesiyle, "Yorumla" sorularına metaforla başlar.
+- **Kişilik:** Bir Lise Ders Asistanı gibi resmi ama anlaşılır konuşur.
+
+---
+
+## 💻 Kullanım
+
 ```bash
+# Servisi Başlat (FastAPI - Uvicorn)
 python run_voice_prod.py
 ```
 
-### 2. Istek Gonderin
+**Örnek İstek (cURL):**
 ```bash
 curl -X POST "http://localhost:8001/ask" \
-     -F "audio=@sorum.wav" \
-     -F "ref_audio=@ses_ornegim.wav"
+     -F "audio=@soru.wav" \
+     -F "ref_audio=@ahmet_hoca.wav"
 ```
 
 ---
-
-## Yapi
-
-- `src/voice/tts_service.py`: Coqui TTS icin sarmalayici (wrapper) (`api_manual` ve `gpu` cikarimini destekler).
-- `src/voice_qa.py`: LLM ve TTS'i birbirine baglayan orkestrator.
-- `run_voice_prod.py`: FASTAPI giris noktasi.
-
----
-*Egitimde ses getiren teknoloji.*
+*Eğitimin yeni sesi.*
